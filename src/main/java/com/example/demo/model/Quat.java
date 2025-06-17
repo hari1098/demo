@@ -2,6 +2,7 @@ package com.example.demo.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "quat")
@@ -10,46 +11,48 @@ public class Quat {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "quat_id")
-    private int id;
+    private Long id;
 
-    @Column(name = "quatno")
+    @Column(name = "quatno", unique = true, nullable = false)
     private String quatno;
 
-    @Column(name = "quat_date")
+    @Column(name = "quat_date", nullable = false)
     private LocalDateTime quatDate;
 
-    @Column(name = "validity")
-    private int validity;
+    @Column(name = "validity", nullable = false)
+    private Integer validity;
 
-    @Column(name = "customer_id")
-    private Long customerId;
-
-    @Column(name = "user_id")
-    private int userId;
-
-    @ManyToOne
-    @JoinColumns({
-            @JoinColumn(name = "customer_id", referencedColumnName = "customerid", insertable = false, updatable = false),
-            @JoinColumn(name = "user_id", referencedColumnName = "user_no", insertable = false, updatable = false)
-    })
+    // Foreign key to Customer
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false, foreignKey = @ForeignKey(name = "FK_quat_customer"))
     private Customer customer;
 
-    public Quat() {}
+    // Foreign key to Login (User)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "FK_quat_user"))
+    private Login user;
 
-    public Quat(String quatno, LocalDateTime quatDate, int validity, Long customerId, int userId) {
+    // One quotation can have many quotation items
+    @OneToMany(mappedBy = "quotation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Qitem> quotationItems;
+
+    public Quat() {
+    }
+
+    public Quat(String quatno, LocalDateTime quatDate, Integer validity, Customer customer, Login user) {
         this.quatno = quatno;
         this.quatDate = quatDate;
         this.validity = validity;
-        this.customerId = customerId;
-        this.userId = userId;
+        this.customer = customer;
+        this.user = user;
     }
 
     // Getters and setters
-    public int getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -69,28 +72,12 @@ public class Quat {
         this.quatDate = quatDate;
     }
 
-    public int getValidity() {
+    public Integer getValidity() {
         return validity;
     }
 
-    public void setValidity(int validity) {
+    public void setValidity(Integer validity) {
         this.validity = validity;
-    }
-
-    public Long getCustomerId() {
-        return customerId;
-    }
-
-    public void setCustomerId(Long customerId) {
-        this.customerId = customerId;
-    }
-
-    public int getUserId() {
-        return userId;
-    }
-
-    public void setUserId(int userId) {
-        this.userId = userId;
     }
 
     public Customer getCustomer() {
@@ -99,5 +86,42 @@ public class Quat {
 
     public void setCustomer(Customer customer) {
         this.customer = customer;
+    }
+
+    public Login getUser() {
+        return user;
+    }
+
+    public void setUser(Login user) {
+        this.user = user;
+    }
+
+    public List<Qitem> getQuotationItems() {
+        return quotationItems;
+    }
+
+    public void setQuotationItems(List<Qitem> quotationItems) {
+        this.quotationItems = quotationItems;
+    }
+
+    // Helper methods for backward compatibility
+    public Long getCustomerId() {
+        return customer != null ? customer.getId() : null;
+    }
+
+    public Long getUserId() {
+        return user != null ? user.getId() : null;
+    }
+
+    @Override
+    public String toString() {
+        return "Quat{" +
+                "id=" + id +
+                ", quatno='" + quatno + '\'' +
+                ", quatDate=" + quatDate +
+                ", validity=" + validity +
+                ", customerId=" + getCustomerId() +
+                ", userId=" + getUserId() +
+                '}';
     }
 }

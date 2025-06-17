@@ -3,6 +3,7 @@ package com.example.demo.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -20,17 +21,16 @@ public class Item {
     @Column(name = "license_type")
     private String licensetype;
 
-
+    @Column(name = "price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
     @Column(name = "created_by")
     private String createdby;
 
-
     @Column(name = "created_on")
     private LocalDateTime createdon;
 
-    @Column(name = "item_name")
+    @Column(name = "item_name", nullable = false)
     private String itemname;
 
     @Column(name = "updated_by")
@@ -39,48 +39,28 @@ public class Item {
     @Column(name = "updated_on")
     private LocalDateTime updatedon;
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isactive = true;
 
-    @Column(name = "is_active")
-    private Boolean isactive;
-
+    // One item can be in many quotation items
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Qitem> quotationItems;
 
     public Item() {
     }
 
-
-    public Item(String idname, String licensetype, BigDecimal price,
-                String createdby, LocalDateTime createdon, String itemname,
-                String updatedby, LocalDateTime updatedon, Boolean isactive) {
+    public Item(String idname, String licensetype, BigDecimal price, String createdby, 
+               String itemname, Boolean isactive) {
         this.idname = idname;
         this.licensetype = licensetype;
         this.price = price;
         this.createdby = createdby;
-        this.createdon = createdon;
+        this.createdon = LocalDateTime.now();
         this.itemname = itemname;
-        this.updatedby = updatedby;
-        this.updatedon = updatedon;
-        this.isactive = isactive;
+        this.isactive = isactive != null ? isactive : true;
     }
 
-    // All-args constructor, useful for mapping existing data or testing
-    public Item(Long id, String idname, String licensetype, BigDecimal price,
-                String createdby, LocalDateTime createdon, String itemname,
-                String updatedby, LocalDateTime updatedon, Boolean isactive) {
-        this.id = id;
-        this.idname = idname;
-        this.licensetype = licensetype;
-        this.price = price;
-        this.createdby = createdby;
-        this.createdon = createdon;
-        this.itemname = itemname;
-        this.updatedby = updatedby;
-        this.updatedon = updatedon;
-        this.isactive = isactive;
-    }
-
-
-
-
+    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -161,20 +141,37 @@ public class Item {
         this.isactive = isactive;
     }
 
-    // --- equals(), hashCode(), toString() ---
+    public List<Qitem> getQuotationItems() {
+        return quotationItems;
+    }
+
+    public void setQuotationItems(List<Qitem> quotationItems) {
+        this.quotationItems = quotationItems;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        createdon = LocalDateTime.now();
+        if (isactive == null) {
+            isactive = true;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedon = LocalDateTime.now();
+    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Item item = (Item) o;
-
         return id != null && Objects.equals(id, item.id);
     }
 
     @Override
     public int hashCode() {
-
         return id != null ? Objects.hash(id) : 0;
     }
 
@@ -185,11 +182,7 @@ public class Item {
                 ", idname='" + idname + '\'' +
                 ", licensetype='" + licensetype + '\'' +
                 ", price=" + price +
-                ", createdby='" + createdby + '\'' +
-                ", createdon=" + createdon +
                 ", itemname='" + itemname + '\'' +
-                ", updatedby='" + updatedby + '\'' +
-                ", updatedon=" + updatedon +
                 ", isactive=" + isactive +
                 '}';
     }

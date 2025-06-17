@@ -5,6 +5,7 @@ import com.example.demo.repository.LoginRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,11 +19,10 @@ public class LoginService {
         return loginRepo.findAll();
     }
 
-    public Optional<Login> getloginById(int id) {
+    public Optional<Login> getloginById(Long id) {
         return loginRepo.findById(id);
     }
 
-    // ✅ Validation method separated
     public String validateLogin(Login login) {
         if (loginRepo.existsByEmail(login.getEmail())) {
             return "Email already exists";
@@ -33,12 +33,15 @@ public class LoginService {
         return "OK";
     }
 
-    // ✅ Main create method
     public Login createLogin(Login login) {
+        login.setCreatedOn(LocalDateTime.now());
+        if (login.getIsActive() == null) {
+            login.setIsActive(true);
+        }
         return loginRepo.save(login);
     }
 
-    public Login updateLogin(int id, Login updatedLogin) {
+    public Login updateLogin(Long id, Login updatedLogin) {
         return loginRepo.findById(id).map(login -> {
             login.setUsername(updatedLogin.getUsername());
             login.setPassword(updatedLogin.getPassword());
@@ -46,22 +49,21 @@ public class LoginService {
             login.setFirstName(updatedLogin.getFirstName());
             login.setLastName(updatedLogin.getLastName());
             login.setUserType(updatedLogin.getUserType());
-            login.setCreatedBy(updatedLogin.getCreatedBy());
-            login.setCreatedOn(updatedLogin.getCreatedOn());
             login.setUpdatedBy(updatedLogin.getUpdatedBy());
-            login.setUpdatedOn(updatedLogin.getUpdatedOn());
-            login.setIsActive(updatedLogin.getIsActive());
+            login.setUpdatedOn(LocalDateTime.now());
+            if (updatedLogin.getIsActive() != null) {
+                login.setIsActive(updatedLogin.getIsActive());
+            }
             return loginRepo.save(login);
         }).orElse(null);
     }
 
-    public boolean deleteLogin(int id) {
+    public boolean deleteLogin(Long id) {
         Optional<Login> login = loginRepo.findById(id);
         if (login.isPresent()) {
             loginRepo.deleteById(id);
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 }

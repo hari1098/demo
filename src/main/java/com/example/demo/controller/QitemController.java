@@ -1,8 +1,5 @@
 package com.example.demo.controller;
 
-
-
-import com.example.demo.model.Login;
 import com.example.demo.model.Qitem;
 import com.example.demo.service.QitemService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +13,8 @@ import java.util.List;
 @RequestMapping("/api/qitem")
 public class QitemController {
 
-
     @Autowired
-    QitemService qitemService;
-
+    private QitemService qitemService;
 
     @GetMapping
     public List<Qitem> getQitems() {
@@ -27,31 +22,36 @@ public class QitemController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Qitem> getQitemById(@PathVariable int id) {
-        return qitemService.getQitemById(id)  // method name should match your service
+    public ResponseEntity<Qitem> getQitemById(@PathVariable Long id) {
+        return qitemService.getQitemById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/quotation/{quatId}")
+    public List<Qitem> getQitemsByQuotationId(@PathVariable Long quatId) {
+        return qitemService.getQitemsByQuotationId(quatId);
+    }
 
     @PostMapping
     public ResponseEntity<Qitem> createQitem(@RequestBody Qitem qitem) {
-        Qitem createdqitem = qitemService.createQitem(qitem);
-        return new ResponseEntity<>(createdqitem, HttpStatus.CREATED);
+        try {
+            Qitem createdQitem = qitemService.createQitem(qitem);
+            return new ResponseEntity<>(createdQitem, HttpStatus.CREATED);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Qitem> updateQitem(@PathVariable int id, @RequestBody Qitem qitem) {
+    public ResponseEntity<Qitem> updateQitem(@PathVariable Long id, @RequestBody Qitem qitem) {
         Qitem updated = qitemService.updateQitem(id, qitem);
         return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteQitem(@PathVariable int id) {
+    public ResponseEntity<String> deleteQitem(@PathVariable Long id) {
         boolean deleted = qitemService.deleteQitem(id);
         return deleted ? ResponseEntity.ok("Qitem deleted.") : ResponseEntity.notFound().build();
     }
-
-
-
 }

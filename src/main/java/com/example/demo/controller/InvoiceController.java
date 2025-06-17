@@ -19,7 +19,7 @@ public class InvoiceController {
     }
 
     @GetMapping("/generate/{quatId}")
-    public ResponseEntity<byte[]> generateInvoice(@PathVariable int quatId) {
+    public ResponseEntity<byte[]> generateInvoice(@PathVariable Long quatId) {
         try {
             byte[] pdfBytes = invoicePdfService.generateInvoicePdf(quatId);
 

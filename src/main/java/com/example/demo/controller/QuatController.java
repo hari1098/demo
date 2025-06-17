@@ -1,9 +1,9 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Quat;
-import com.example.demo.service.InvoicePdfService; // Import the new service
+import com.example.demo.service.InvoicePdfService;
 import com.example.demo.service.QuatService;
-import com.itextpdf.text.DocumentException; // Import for PDF exceptions
+import com.itextpdf.text.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,18 +23,26 @@ public class QuatController {
     private QuatService quatService;
 
     @Autowired
-    private InvoicePdfService invoicePdfService; // Inject the PDF service
+    private InvoicePdfService invoicePdfService;
 
     @PostMapping
-    public ResponseEntity<Quat> createItem(@RequestBody Quat quat) {
-        Quat createdQuat = quatService.createQuat(quat);
-        return new ResponseEntity<>(createdQuat, HttpStatus.CREATED);
+    public ResponseEntity<Quat> createQuat(@RequestBody Quat quat) {
+        try {
+            Quat createdQuat = quatService.createQuat(quat);
+            return new ResponseEntity<>(createdQuat, HttpStatus.CREATED);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Quat> updateQuat(@PathVariable int id, @RequestBody Quat quat) {
-        Quat updated = quatService.updateQuat(id, quat);
-        return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
+    public ResponseEntity<Quat> updateQuat(@PathVariable Long id, @RequestBody Quat quat) {
+        try {
+            Quat updated = quatService.updateQuat(id, quat);
+            return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping
@@ -43,20 +51,36 @@ public class QuatController {
     }
 
     @GetMapping("/{id}")
-    public Optional<Quat> getQuatById(@PathVariable int id) {
-        return quatService.getQuatById(id);
+    public ResponseEntity<Quat> getQuatById(@PathVariable Long id) {
+        Optional<Quat> quat = quatService.getQuatById(id);
+        return quat.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
-    // --- New Endpoint for Invoice Generation ---
+    @GetMapping("/customer/{customerId}")
+    public List<Quat> getQuatsByCustomerId(@PathVariable Long customerId) {
+        return quatService.getQuatsByCustomerId(customerId);
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<Quat> getQuatsByUserId(@PathVariable Long userId) {
+        return quatService.getQuatsByUserId(userId);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteQuat(@PathVariable Long id) {
+        boolean deleted = quatService.deleteQuat(id);
+        return deleted ? ResponseEntity.ok("Quotation deleted successfully.") : ResponseEntity.notFound().build();
+    }
+
     @GetMapping("/{quatId}/invoice")
-    public ResponseEntity<byte[]> generateInvoice(@PathVariable int quatId) {
+    public ResponseEntity<byte[]> generateInvoice(@PathVariable Long quatId) {
         try {
             byte[] pdfBytes = invoicePdfService.generateInvoicePdf(quatId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             String filename = "invoice_" + quatId + ".pdf";
-            headers.setContentDispositionFormData("attachment", filename); // Forces download
+            headers.setContentDispositionFormData("attachment", filename);
             headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
 
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
@@ -67,5 +91,4 @@ public class QuatController {
             return new ResponseEntity<>(e.getMessage().getBytes(), HttpStatus.NOT_FOUND);
         }
     }
-    // --- End New Endpoint ---
 }

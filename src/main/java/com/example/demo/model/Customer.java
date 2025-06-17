@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
+import java.util.List;
 
 @Entity
 @Table(name = "customer")
@@ -11,14 +12,14 @@ public class Customer {
     @Column(name = "customerid")
     private Long id;
 
-    @Column(name = "customer_name")
+    @Column(name = "customer_name", nullable = false)
     private String customername;
 
-    @Column(name = "email_id")
+    @Column(name = "email_id", unique = true, nullable = false)
     private String emailid;
 
-    @Column(name = "mobile_number")
-    private long mobilenumber; // changed from int to long
+    @Column(name = "mobile_number", nullable = false)
+    private Long mobilenumber;
 
     @Column(name = "company_name")
     private String companyname;
@@ -29,11 +30,18 @@ public class Customer {
     @Column(name = "reffered_by")
     private String refferedby;
 
-    @Column(name = "user_no")
-    private int userno;
+    @Column(name = "user_no", nullable = false)
+    private Integer userno;
 
-    public Customer(Long id, String customername, String emailid, long mobilenumber, String companyname, String address, String refferedby, int userno) {
-        this.id = id;
+    // One customer can have many quotations
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Quat> quotations;
+
+    public Customer() {
+    }
+
+    public Customer(String customername, String emailid, Long mobilenumber, String companyname, 
+                   String address, String refferedby, Integer userno) {
         this.customername = customername;
         this.emailid = emailid;
         this.mobilenumber = mobilenumber;
@@ -43,9 +51,7 @@ public class Customer {
         this.userno = userno;
     }
 
-    public Customer() {
-    }
-
+    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -70,11 +76,11 @@ public class Customer {
         this.emailid = emailid;
     }
 
-    public long getMobilenumber() {
+    public Long getMobilenumber() {
         return mobilenumber;
     }
 
-    public void setMobilenumber(long mobilenumber) {
+    public void setMobilenumber(Long mobilenumber) {
         this.mobilenumber = mobilenumber;
     }
 
@@ -102,12 +108,20 @@ public class Customer {
         this.refferedby = refferedby;
     }
 
-    public int getUserno() {
+    public Integer getUserno() {
         return userno;
     }
 
-    public void setUserno(int userno) {
+    public void setUserno(Integer userno) {
         this.userno = userno;
+    }
+
+    public List<Quat> getQuotations() {
+        return quotations;
+    }
+
+    public void setQuotations(List<Quat> quotations) {
+        this.quotations = quotations;
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Login;
-import com.example.demo.repository.LoginRepo;
 import com.example.demo.service.LoginService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,7 +15,6 @@ public class LoginController {
 
     @Autowired
     private LoginService loginService;
-    private LoginRepo loginRepo;
 
     @GetMapping
     public List<Login> getAllLogins() {
@@ -24,13 +22,12 @@ public class LoginController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Login> getLoginById(@PathVariable int id) {
+    public ResponseEntity<Login> getLoginById(@PathVariable Long id) {
         return loginService.getloginById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // post mapping create pannrom
     @PostMapping
     public ResponseEntity<?> createLogin(@RequestBody Login login) {
         String validationMessage = loginService.validateLogin(login);
@@ -40,31 +37,19 @@ public class LoginController {
         return ResponseEntity.ok(loginService.createLogin(login));
     }
 
-
-
-
-    // update pannalm ahh
-
     @PutMapping("/{id}")
-    public ResponseEntity<Login> updateLogin(@PathVariable int id, @RequestBody Login login) {
+    public ResponseEntity<Login> updateLogin(@PathVariable Long id, @RequestBody Login login) {
         Login updated = loginService.updateLogin(id, login);
         return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
-
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteLogin(@PathVariable int id) {
+    public ResponseEntity<String> deleteLogin(@PathVariable Long id) {
         boolean deleted = loginService.deleteLogin(id);
-        if(deleted){
+        if (deleted) {
             return ResponseEntity.ok("Login with ID " + id + " was deleted successfully.");
-        }
-        else{
+        } else {
             return ResponseEntity.notFound().build();
         }
-
     }
-
-
-    }
-
-
+}

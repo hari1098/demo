@@ -16,8 +16,6 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class InvoicePdfService {
@@ -26,13 +24,7 @@ public class InvoicePdfService {
     private QuatService quatService;
 
     @Autowired
-    private CustomerService customerService;
-
-    @Autowired
     private QitemService qitemService;
-
-    @Autowired
-    private ItemService itemService;
 
     // Company Information (configurable)
     private static final String COMPANY_NAME = "Your Company Name";
@@ -41,13 +33,12 @@ public class InvoicePdfService {
     private static final String COMPANY_PHONE = "+91 9876543210";
     private static final String COMPANY_WEBSITE = "www.yourcompany.com";
     private static final String COMPANY_GSTIN = "22AAAAA0000A1Z5";
-    private static final String COMPANY_LOGO_PATH = "src/main/resources/static/images/logo.png";
 
     private static final float TAX_RATE = 0.18f;
 
-    public byte[] generateInvoicePdf(int quatId) throws DocumentException, IOException {
+    public byte[] generateInvoicePdf(Long quatId) throws DocumentException, IOException {
         // Validate quatId
-        if (quatId <= 0) {
+        if (quatId == null || quatId <= 0) {
             throw new IllegalArgumentException("Invalid quotation ID");
         }
 
@@ -56,15 +47,17 @@ public class InvoicePdfService {
                 .orElseThrow(() -> new RuntimeException("Quotation not found with ID: " + quatId));
 
         // Fetch customer data
-        Customer customer = customerService.getCustomerById(quat.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer not found for quotation ID: " + quatId));
+        Customer customer = quat.getCustomer();
+        if (customer == null) {
+            throw new RuntimeException("Customer not found for quotation ID: " + quatId);
+        }
 
-        // Fetch relevant items
-        List<Qitem> relevantQitems = getRelevantQitems(quat);
+        // Fetch quotation items
+        List<Qitem> quotationItems = qitemService.getQitemsByQuotationId(quatId);
 
         // Create PDF document
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4, 36, 36, 60, 36); // Margins: left, right, top, bottom
+        Document document = new Document(PageSize.A4, 36, 36, 60, 36);
         PdfWriter.getInstance(document, baos);
         document.open();
 
@@ -73,7 +66,6 @@ public class InvoicePdfService {
         Font headerFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD, BaseColor.WHITE);
         Font normalFont = new Font(Font.FontFamily.HELVETICA, 10);
         Font boldFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD);
-        Font smallFont = new Font(Font.FontFamily.HELVETICA, 8);
         Font footerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.ITALIC);
 
         // Add company header
@@ -86,7 +78,7 @@ public class InvoicePdfService {
         addCustomerDetails(document, boldFont, normalFont, customer);
 
         // Add items table
-        BigDecimal[] totals = addItemsTable(document, headerFont, normalFont, boldFont, relevantQitems);
+        BigDecimal[] totals = addItemsTable(document, headerFont, normalFont, boldFont, quotationItems);
 
         // Add totals section
         addTotalsSection(document, boldFont, normalFont, totals[0], totals[1]);
@@ -98,39 +90,16 @@ public class InvoicePdfService {
         return baos.toByteArray();
     }
 
-    private List<Qitem> getRelevantQitems(Quat quat) {
-        List<Qitem> allQitems = qitemService.getQitems();
-
-        // Filter Qitems related to this quotation
-        List<Qitem> relevantQitems = allQitems.stream()
-                .filter(q -> q.getQitem().contains(quat.getQuatno())) // Adjust this filter as needed
-                .collect(Collectors.toList());
-
-        if (relevantQitems.isEmpty()) {
-            // Fallback to all items if no specific ones found
-            System.out.println("No specific Qitems found for quat " + quat.getQuatno() + ". Including all items.");
-            relevantQitems = allQitems;
-        }
-
-        return relevantQitems;
-    }
-
     private void addCompanyHeader(Document document, Font titleFont, Font normalFont, Quat quat) throws DocumentException {
         PdfPTable headerTable = new PdfPTable(2);
         headerTable.setWidthPercentage(100);
         headerTable.setWidths(new float[]{30, 70});
         headerTable.setSpacingAfter(20);
 
-        // Left column - Logo
+        // Left column - Company name
         PdfPCell logoCell = new PdfPCell();
         logoCell.setBorder(Rectangle.NO_BORDER);
-        try {
-            Image logo = Image.getInstance(COMPANY_LOGO_PATH);
-            logo.scaleToFit(100, 100);
-            logoCell.addElement(logo);
-        } catch (Exception e) {
-            logoCell.addElement(new Paragraph(COMPANY_NAME, titleFont));
-        }
+        logoCell.addElement(new Paragraph(COMPANY_NAME, titleFont));
         headerTable.addCell(logoCell);
 
         // Right column - Company info
@@ -139,7 +108,6 @@ public class InvoicePdfService {
         infoCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
         Paragraph companyInfo = new Paragraph();
-        companyInfo.add(new Chunk(COMPANY_NAME + "\n", titleFont));
         companyInfo.add(new Chunk(COMPANY_ADDRESS + "\n", normalFont));
         companyInfo.add(new Chunk("GSTIN: " + COMPANY_GSTIN + "\n", normalFont));
         companyInfo.add(new Chunk("Email: " + COMPANY_EMAIL + "\n", normalFont));
@@ -178,8 +146,10 @@ public class InvoicePdfService {
         rightCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
         Paragraph rightPara = new Paragraph();
-        rightPara.add(new Chunk("Prepared By: Sales Team\n", normalFont));
-        rightPara.add(new Chunk("Reference: " + (quat.getCustomer() != null ? quat.getCustomer().getRefferedby() : "N/A") + "\n", normalFont));
+        rightPara.add(new Chunk("Prepared By: " + (quat.getUser() != null ? 
+            quat.getUser().getFirstName() + " " + quat.getUser().getLastName() : "Sales Team") + "\n", normalFont));
+        rightPara.add(new Chunk("Reference: " + (quat.getCustomer().getRefferedby() != null ? 
+            quat.getCustomer().getRefferedby() : "N/A") + "\n", normalFont));
 
         rightCell.addElement(rightPara);
         detailsTable.addCell(rightCell);
@@ -200,23 +170,31 @@ public class InvoicePdfService {
         Paragraph billToPara = new Paragraph();
         billToPara.add(new Chunk("Bill To:\n", boldFont));
         billToPara.add(new Chunk(customer.getCustomername() + "\n", normalFont));
-        billToPara.add(new Chunk(customer.getCompanyname() + "\n", normalFont));
-        billToPara.add(new Chunk(customer.getAddress() + "\n", normalFont));
+        if (customer.getCompanyname() != null) {
+            billToPara.add(new Chunk(customer.getCompanyname() + "\n", normalFont));
+        }
+        if (customer.getAddress() != null) {
+            billToPara.add(new Chunk(customer.getAddress() + "\n", normalFont));
+        }
         billToPara.add(new Chunk("Email: " + customer.getEmailid() + "\n", normalFont));
         billToPara.add(new Chunk("Phone: " + customer.getMobilenumber(), normalFont));
 
         billToCell.addElement(billToPara);
         customerTable.addCell(billToCell);
 
-        // Ship To section (same as Bill To in this implementation)
+        // Ship To section (same as Bill To)
         PdfPCell shipToCell = new PdfPCell();
         shipToCell.setBorder(Rectangle.NO_BORDER);
 
         Paragraph shipToPara = new Paragraph();
         shipToPara.add(new Chunk("Ship To:\n", boldFont));
         shipToPara.add(new Chunk(customer.getCustomername() + "\n", normalFont));
-        shipToPara.add(new Chunk(customer.getCompanyname() + "\n", normalFont));
-        shipToPara.add(new Chunk(customer.getAddress() + "\n", normalFont));
+        if (customer.getCompanyname() != null) {
+            shipToPara.add(new Chunk(customer.getCompanyname() + "\n", normalFont));
+        }
+        if (customer.getAddress() != null) {
+            shipToPara.add(new Chunk(customer.getAddress() + "\n", normalFont));
+        }
         shipToPara.add(new Chunk("Contact: " + customer.getMobilenumber(), normalFont));
 
         shipToCell.addElement(shipToPara);
@@ -232,7 +210,6 @@ public class InvoicePdfService {
         itemTable.setSpacingBefore(10);
         itemTable.setSpacingAfter(20);
 
-        // Dynamic column widths - adjust based on content
         float[] columnWidths = {0.8f, 3.5f, 1f, 1.2f, 1f, 1.5f};
         itemTable.setWidths(columnWidths);
 
@@ -251,31 +228,19 @@ public class InvoicePdfService {
         int rowNum = 1;
 
         for (Qitem qitem : qitems) {
-            Optional<Item> optionalItem = itemService.getItemById((long) qitem.getItemId());
-            Item item = optionalItem.orElse(null);
-
-            String itemName = item != null ? item.getItemname() : qitem.getQitem();
+            Item item = qitem.getItem();
+            String itemName = item != null ? item.getItemname() : "Unknown Item";
             String licenseType = qitem.getLicenseType() != null ? qitem.getLicenseType() : "Standard";
-            BigDecimal unitPrice = item != null && item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO;
-            BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qitem.getQty()));
+            BigDecimal unitPrice = qitem.getUnitPrice() != null ? qitem.getUnitPrice() : BigDecimal.ZERO;
+            BigDecimal itemTotal = qitem.getTotalPrice() != null ? qitem.getTotalPrice() : BigDecimal.ZERO;
             subTotal = subTotal.add(itemTotal);
 
-            // Row number
+            // Add table rows
             itemTable.addCell(createCell(String.valueOf(rowNum++), normalFont, Element.ALIGN_CENTER, false));
-
-            // Description
             itemTable.addCell(createCell(itemName, normalFont, Element.ALIGN_LEFT, false));
-
-            // License type
             itemTable.addCell(createCell(licenseType, normalFont, Element.ALIGN_CENTER, false));
-
-            // Quantity
-            itemTable.addCell(createCell(String.valueOf(qitem.getQty()), normalFont, Element.ALIGN_CENTER, false));
-
-            // Unit price
+            itemTable.addCell(createCell(String.valueOf(qitem.getQuantity()), normalFont, Element.ALIGN_CENTER, false));
             itemTable.addCell(createCell(String.format("₹%.2f", unitPrice), normalFont, Element.ALIGN_RIGHT, false));
-
-            // Amount
             itemTable.addCell(createCell(String.format("₹%.2f", itemTotal), normalFont, Element.ALIGN_RIGHT, false));
         }
 
