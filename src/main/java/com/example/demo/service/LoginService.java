@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.model.Login;
 import com.example.demo.repository.LoginRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,9 @@ public class LoginService {
 
     @Autowired
     private LoginRepo loginRepo;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public List<Login> getAllLogins() {
         return loginRepo.findAll();
@@ -34,6 +38,8 @@ public class LoginService {
     }
 
     public Login createLogin(Login login) {
+        // Encode password before saving
+        login.setPassword(passwordEncoder.encode(login.getPassword()));
         login.setCreatedOn(LocalDateTime.now());
         if (login.getIsActive() == null) {
             login.setIsActive(true);
@@ -44,7 +50,10 @@ public class LoginService {
     public Login updateLogin(Long id, Login updatedLogin) {
         return loginRepo.findById(id).map(login -> {
             login.setUsername(updatedLogin.getUsername());
-            login.setPassword(updatedLogin.getPassword());
+            // Only encode password if it's being changed
+            if (updatedLogin.getPassword() != null && !updatedLogin.getPassword().isEmpty()) {
+                login.setPassword(passwordEncoder.encode(updatedLogin.getPassword()));
+            }
             login.setEmail(updatedLogin.getEmail());
             login.setFirstName(updatedLogin.getFirstName());
             login.setLastName(updatedLogin.getLastName());
