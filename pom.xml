@@ -99,10 +99,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Apache PDFBox Dependencies -->
         <dependency>
-            <groupId>com.itextpdf</groupId>
-            <artifactId>itextpdf</artifactId>
-            <version>5.5.13.3</version>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>fontbox</artifactId>
+            <version>3.0.1</version>
         </dependency>
 
     </dependencies>

@@ -1,9 +1,8 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Quat;
-import com.example.demo.service.InvoicePdfService;
 import com.example.demo.service.QuatService;
-import com.itextpdf.text.DocumentException;
+import com.example.demo.service.QuotationPdfService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,7 +22,7 @@ public class QuatController {
     private QuatService quatService;
 
     @Autowired
-    private InvoicePdfService invoicePdfService;
+    private QuotationPdfService quotationPdfService;
 
     @PostMapping
     public ResponseEntity<Quat> createQuat(@RequestBody Quat quat) {
@@ -72,19 +71,19 @@ public class QuatController {
         return deleted ? ResponseEntity.ok("Quotation deleted successfully.") : ResponseEntity.notFound().build();
     }
 
-    @GetMapping("/{quatId}/invoice")
-    public ResponseEntity<byte[]> generateInvoice(@PathVariable Long quatId) {
+    @GetMapping("/{quatId}/quotation-pdf")
+    public ResponseEntity<byte[]> generateQuotationPdf(@PathVariable Long quatId) {
         try {
-            byte[] pdfBytes = invoicePdfService.generateInvoicePdf(quatId);
+            byte[] pdfBytes = quotationPdfService.generateQuotationPdf(quatId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            String filename = "invoice_" + quatId + ".pdf";
+            String filename = "quotation_" + quatId + ".pdf";
             headers.setContentDispositionFormData("attachment", filename);
             headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
 
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
-        } catch (DocumentException | IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
             return new ResponseEntity<>(("Error generating PDF: " + e.getMessage()).getBytes(), HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (RuntimeException e) {
